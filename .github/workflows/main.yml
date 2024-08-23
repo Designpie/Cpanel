@@ -1,23 +1,23 @@
-name: CI -> Deploy to My website
+name: Publish Website
+
 on:
-  push:
+
+ push:
     branches: main
 
-env:
-  GITHUB_ACTIONS_DEBUG: true
-
 jobs:
-  build:
-
+  Fast-FTP-Action:
+    name: Fast FTP Action
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Upload from public_html via FTP
-        uses: airvzxf/ftp-deployment-action@latest
-        with:
-         server: ${{ secrets.FTP_SERVER }}
-         user: ${{ secrets.FTP_USERNAME }}
-         password: ${{ secrets.FTP_PASSWORD }}
-         remote_dir: /home/electgcs/public_html/
-         debug: true
+    - uses: actions/checkout@v2
+
+    - name: Fast FTP Action
+      uses: anvil-solutions/Fast-FTP-Action@2.1.0
+      with:
+        server: ftp.electronicdevices.co.za
+        port: 21
+        username: myFtpUserName
+        password: ${{ secrets.FTP_PASSWORD }}
+        remote_dir: /home/electgcs/public_html/
