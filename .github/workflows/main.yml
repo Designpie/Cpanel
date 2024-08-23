@@ -1,6 +1,6 @@
 name: Deploy to Server
 
-on:
+ on:
   push:
     branches:
       - main
@@ -12,39 +12,31 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install sshpass and netcat
-      run: sudo apt-get update && sudo apt-get install -y sshpass netcat
+    - name: Install FTP client
+      run: sudo apt-get update && sudo apt-get install -y ftp
 
-    - name: Diagnostic checks
+    - name: Deploy to server using FTP
       env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        echo "Checking connection to server..."
-        nc -zv $HOST $PORT
-        echo "Attempting SSH connection..."
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
-        # Additional debugging steps
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "netstat -tlnp | grep ssh"
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ss -tlnp | grep ssh"
-
-    - name: Deploy to server using scp
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
+        FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+        FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         TARGET: /home/electgcs/public_html/
       run: |
-        sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:$TARGET
+        ftp -n $FTP_SERVER << EOF
+        user $FTP_USERNAME $FTP_PASSWORD
+        cd $TARGET
+        mput ./*
+        bye
+        EOF
 
     - name: Verify deployment
       env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
+        FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+        FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       run: |
-       sshpass -p "$PASS" ssh -v -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
+        ftp -n $FTP_SERVER << EOF
+        user $FTP_USERNAME $FTP_PASSWORD
+        ls -la /home/electgcs/public_html/
+        bye
+        EOF
