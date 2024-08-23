@@ -47,4 +47,4 @@ jobs:
         PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
+       sshpass -p "$PASS" ssh -v -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
