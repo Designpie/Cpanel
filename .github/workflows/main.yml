@@ -13,11 +13,10 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: FTP Deploy
-      uses: ftp-deploy/ftp-deploy@v1
+      uses: SamKirkland/FTP-Deploy-Action@v1.1.0
       with:
-        server: ftp.electronicdevices.co.za
-        port: 21
-        username: myFtpUserName
-        password: ${{ secrets.FTP_PASSWORD }}
+        ftp-server: ftp.electronicdevices.co.za
+        ftp-username: myFtpUserName
+        ftp-password: ${{ secrets.FTP_PASSWORD }}
         local-dir: './public_html'
         remote-dir: '/home/electgcs/public_html/'
