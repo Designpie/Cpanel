@@ -5,18 +5,19 @@ on:
     branches: main
 
 jobs:
-  Fast-FTP-Action:
-    name: Fast FTP Action
+  FTP-Deploy:
+    name: FTP Deploy
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Fast FTP Action
-      uses: anvil-solutions/Fast-FTP-Action@v1.0.0
+    - name: FTP Deploy
+      uses: ftp-deploy/ftp-deploy@v1
       with:
         server: ftp.electronicdevices.co.za
         port: 21
         username: myFtpUserName
         password: ${{ secrets.FTP_PASSWORD }}
-        remote_dir: /home/electgcs/public_html/
+        local-dir: './public_html'
+        remote-dir: '/home/electgcs/public_html/'
