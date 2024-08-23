@@ -12,10 +12,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install sshpass and rsync
-      run: sudo apt-get update && sudo apt-get install -y sshpass rsync
+    - name: Install sshpass and netcat
+      run: sudo apt-get update && sudo apt-get install -y sshpass netcat
 
-    - name: Deploy to server
+    - name: Diagnostic checks
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        echo "Checking connection to server..."
+        nc -zv $HOST $PORT
+        echo "Attempting SSH connection..."
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
+
+    - name: Deploy to server using scp
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
@@ -23,11 +35,8 @@ jobs:
         PORT: ${{ secrets.FTP_PORT }}
         TARGET: /home/electgcs/public_html/
       run: |
-        sshpass -p "$PASS" rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" \
-          --exclude '.git' \
-          --exclude '.github' \
-          ./ $USER@$HOST:$TARGET
-      
+        sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:$TARGET
+
     - name: Verify deployment
       env:
         HOST: ${{ secrets.FTP_SERVER }}
@@ -35,4 +44,4 @@ jobs:
         PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" ssh -p $PORT -o StrictHostKeyChecking=no $USER@$HOST "ls -la /home/electgcs/public_html/"
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
