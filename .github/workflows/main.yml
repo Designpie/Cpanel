@@ -26,6 +26,9 @@ jobs:
         nc -zv $HOST $PORT
         echo "Attempting SSH connection..."
         sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
+        # Additional debugging steps
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "netstat -tlnp | grep ssh"
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ss -tlnp | grep ssh"
 
     - name: Deploy to server using scp
       env:
