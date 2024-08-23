@@ -11,13 +11,14 @@ jobs:
        - name: Checkout
          uses: actions/checkout@v3
 
-       - name: List files
-         run: ls -R
-         
-       - name: Check network
+       - name: Network diagnostics
          run: |
-           ping -c 4 ${{ secrets.FTP_SERVER }}
-           nc -zv ${{ secrets.FTP_SERVER }} ${{ secrets.FTP_PORT }}
+           echo "Attempting to connect to ${{ secrets.FTP_SERVER }} on port ${{ secrets.FTP_PORT }}"
+           nc -zv ${{ secrets.FTP_SERVER }} ${{ secrets.FTP_PORT }} -w 10
+           echo "Tracing route to server:"
+           traceroute ${{ secrets.FTP_SERVER }}
+           echo "DNS lookup:"
+           nslookup ${{ secrets.FTP_SERVER }}
 
        - name: Deploy file
          uses: wlixcc/SFTP-Deploy-Action@v1.2.4
@@ -28,5 +29,5 @@ jobs:
             port: ${{ secrets.FTP_PORT }}
             remote_path: /home/electgcs/public_html
             sftp_only: true 
-            timeout: 200s
+            timeout: 120s
             verbose: true
