@@ -12,8 +12,9 @@ jobs:
       - name: Upload from public_html via FTP
         uses: airvzxf/ftp-deployment-action@latest
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          user: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          remote_dir: /home/electgcs/public_html/
-          local_dir: ./  # Assuming your files are in the root of the repository
+         server: ${{ secrets.FTP_SERVER }}
+         user: ${{ secrets.FTP_USERNAME }}
+         password: ${{ secrets.FTP_PASSWORD }}
+         remote_dir: /home/electgcs/public_html/
+         local_dir: ./ 
+         debug: true
