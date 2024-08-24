@@ -7,23 +7,22 @@ jobs:
   test_connection:
     runs-on: ubuntu-latest
     steps:
-    - name: Install netcat
-      run: sudo apt-get update && sudo apt-get install -y netcat
+    - name: Test HTTP connection
+      run: |
+        echo "Testing HTTP connection"
+        curl -v --max-time 10 http://154.0.170.76
+      continue-on-error: true
 
-    - name: Test connection
+    - name: Test HTTPS connection
+      run: |
+        echo "Testing HTTPS connection"
+        curl -v --max-time 10 https://154.0.170.76
+      continue-on-error: true
+
+    - name: Test custom port
       env:
-        HOST: ${{ secrets.FTP_SERVER }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        echo "Testing connection to $HOST:$PORT"
-        nc -zv -w 10 $HOST $PORT
-        
-    - name: Test SSH connection
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        echo "Testing SSH connection to $HOST:$PORT"
-        ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p $PORT $USER@$HOST echo "Connection successful"
+        echo "Testing connection to custom port $PORT"
+        curl -v --max-time 10 telnet://154.0.170.76:$PORT
       continue-on-error: true
