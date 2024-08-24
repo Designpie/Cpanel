@@ -10,24 +10,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: SFTP Deploy
-      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-      with:
-        username: ${{ secrets.FTP_USERNAME }}
-        server: ${{ secrets.FTP_SERVER }}
-        port: ${{ secrets.FTP_PORT }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local_path: './*'
-        remote_path: '/home/electgcs/public_html/'
-        sftp_only: true
-        delete_remote_files: true
+    - name: Install lftp and debug tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lftp netcat
 
-    - name: Verify deployment
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: ${{ secrets.FTP_PORT }}
-        script: |
-          ls -la /home/electgcs/public_html/
+    - name: Debug connection
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        echo "Testing connection to $HOST:$PORT"
+        nc -zv $HOST $PORT
+      continue-on-error: true
+
+    - name: SFTP Deploy
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        echo "Starting SFTP deployment..."
+        lftp -d -e "debug 3; set sftp:auto-confirm yes; set net:timeout 30; set net:max-retries 5; open sftp://$USER:$PASS@$HOST:$PORT; mirror --verbose -R ./ /home/electgcs/public_html/; quit"
+        echo "SFTP deployment completed."
+      timeout-minutes: 30
