@@ -1,24 +1,38 @@
+name: Deploy to Server
+
 on:
   push:
     branches:
       - main
 
 jobs:
-  deploy_job:
+  deploy:
     runs-on: ubuntu-latest
-    name: deploy
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install sshpass and rsync
+      run: sudo apt-get update && sudo apt-get install -y sshpass rsync
+
+    - name: Deploy to server
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+        TARGET: /home/electgcs/public_html/
+      run: |
+        sshpass -p "$PASS" rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" \
+          --exclude '.git' \
+          --exclude '.github' \
+          ./ $USER@$HOST:$TARGET
       
-      - name: Install lftp
-        run: sudo apt-get install lftp
-      
-      - name: Deploy files
-        env:
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_PORT: ${{ secrets.FTP_PORT }}
-        run: |
-          lftp -e "set sftp:auto-confirm yes; open sftp://$FTP_USERNAME:$FTP_PASSWORD@$FTP_SERVER:$FTP_PORT; mirror -R ./ /home/electgcs/public_html; quit"
+    - name: Verify deployment
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        sshpass -p "$PASS" ssh -p $PORT -o StrictHostKeyChecking=no $USER@$HOST "ls -la /home/electgcs/public_html/"
