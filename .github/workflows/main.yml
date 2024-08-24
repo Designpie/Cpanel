@@ -9,38 +9,25 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      timeout-minutes: 5
 
-    - name: Install lftp
-      run: sudo apt-get update && sudo apt-get install -y lftp
-      timeout-minutes: 5
-
-    - name: Debug - List files to be deployed
-      run: |
-        echo "Files to be deployed:"
-        ls -R
-      timeout-minutes: 2
-
-    - name: Deploy using SFTP
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        echo "Starting SFTP deployment..."
-        lftp -d -e "set sftp:auto-confirm yes; set net:timeout 10; set net:max-retries 3; open sftp://$USER:$PASS@$HOST:$PORT; mirror --verbose -R ./ /home/electgcs/public_html/; quit"
-        echo "SFTP deployment completed."
-      timeout-minutes: 15
+    - name: SFTP Deploy
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      with:
+        username: ${{ secrets.FTP_USERNAME }}
+        server: ${{ secrets.FTP_SERVER }}
+        port: ${{ secrets.FTP_PORT }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local_path: './*'
+        remote_path: '/home/electgcs/public_html/'
+        sftp_only: true
+        delete_remote_files: true
 
     - name: Verify deployment
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        echo "Verifying deployment..."
-        lftp -e "set sftp:auto-confirm yes; set net:timeout 10; open sftp://$USER:$PASS@$HOST:$PORT; ls -la /home/electgcs/public_html/; quit"
-        echo "Verification completed."
-      timeout-minutes: 5
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        port: ${{ secrets.FTP_PORT }}
+        script: |
+          ls -la /home/electgcs/public_html/
