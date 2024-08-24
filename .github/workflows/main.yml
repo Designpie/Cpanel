@@ -1,37 +1,29 @@
-name: Deploy to Server
+name: Test Server Connection
 on:
   push:
     branches:
       - main
 jobs:
-  deploy:
+  test_connection:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Install netcat
+      run: sudo apt-get update && sudo apt-get install -y netcat
 
-    - name: Install lftp and debug tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y lftp netcat
-
-    - name: Debug connection
+    - name: Test connection
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
         echo "Testing connection to $HOST:$PORT"
-        nc -zv $HOST $PORT
-      continue-on-error: true
-
-    - name: SFTP Deploy
+        nc -zv -w 10 $HOST $PORT
+        
+    - name: Test SSH connection
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        echo "Starting SFTP deployment..."
-        lftp -d -e "debug 3; set sftp:auto-confirm yes; set net:timeout 30; set net:max-retries 5; open sftp://$USER:$PASS@$HOST:$PORT; mirror --verbose -R ./ /home/electgcs/public_html/; quit"
-        echo "SFTP deployment completed."
-      timeout-minutes: 30
+        echo "Testing SSH connection to $HOST:$PORT"
+        ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p $PORT $USER@$HOST echo "Connection successful"
+      continue-on-error: true
