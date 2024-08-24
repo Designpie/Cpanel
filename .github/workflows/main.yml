@@ -23,10 +23,10 @@ jobs:
         PORT: ${{ secrets.FTP_PORT }}
         TARGET: /home/electgcs/public_html/
       run: |
-        sshpass -p "$PASS" rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" \
-          --exclude '.git' \
-          --exclude '.github' \
-          ./ $USER@$HOST:$TARGET
+        sshpass -p "$PASS" rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no -o ConnectTimeout=30" \
+        --exclude '.git' \
+        --exclude '.github' \
+        ./ $USER@$HOST:$TARGET
       
     - name: Verify deployment
       env:
