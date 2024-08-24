@@ -1,41 +1,37 @@
 name: Deploy to Server
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      timeout-minutes: 5
 
-    - name: Install sshpass and netcat
-      run: sudo apt-get update && sudo apt-get install -y sshpass netcat
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+      timeout-minutes: 5
 
-    - name: Diagnostic checks
+    - name: Debug - List files to be deployed
+      run: |
+        echo "Files to be deployed:"
+        ls -R
+      timeout-minutes: 2
+
+    - name: Deploy using SFTP
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
         PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        echo "Checking connection to server..."
-        nc -zv $HOST $PORT
-        echo "Attempting SSH connection..."
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
-
-    - name: Deploy to server using scp
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
-        PORT: ${{ secrets.FTP_PORT }}
-        TARGET: /home/electgcs/public_html/
-      run: |
-        sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:$TARGET
+        echo "Starting SFTP deployment..."
+        lftp -d -e "set sftp:auto-confirm yes; set net:timeout 10; set net:max-retries 3; open sftp://$USER:$PASS@$HOST:$PORT; mirror --verbose -R ./ /home/electgcs/public_html/; quit"
+        echo "SFTP deployment completed."
+      timeout-minutes: 15
 
     - name: Verify deployment
       env:
@@ -44,4 +40,7 @@ jobs:
         PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
+        echo "Verifying deployment..."
+        lftp -e "set sftp:auto-confirm yes; set net:timeout 10; open sftp://$USER:$PASS@$HOST:$PORT; ls -la /home/electgcs/public_html/; quit"
+        echo "Verification completed."
+      timeout-minutes: 5
