@@ -11,56 +11,61 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install sshpass
-      run: sudo apt-get update && sudo apt-get install sshpass
+    - name: Install SSH
+      run: sudo apt-get update && sudo apt-get install openssh-client
+
+    - name: Add SSH key to agent
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        eval `ssh-agent -s`
+        ssh-add ~/.ssh/id_rsa
 
     - name: Test SSH connection
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
+        ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
       continue-on-error: true
 
     - name: Deploy using scp
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:/home/electgcs/public_html/
+        scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:/home/electgcs/public_html/
       continue-on-error: true
 
     - name: Deploy using rsync
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" ./* $USER@$HOST:/home/electgcs/public_html/
+        rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" ./* $USER@$HOST:/home/electgcs/public_html/
       continue-on-error: true
 
     - name: Deploy using SFTP (lftp)
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
         sudo apt-get install lftp
-        lftp -c "open -u $USER,$PASS sftp://$HOST:$PORT; mirror -R ./ /home/electgcs/public_html/"
+        lftp -c "open -u $USER,$USER sftp://$HOST:$PORT; mirror -R ./ /home/electgcs/public_html/"
       continue-on-error: true
 
     - name: Verify deployment
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
-        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
+        ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
       continue-on-error: true
