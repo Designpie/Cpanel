@@ -1,22 +1,47 @@
-name: Publish Website
+name: Deploy to Server
 
 on:
   push:
-    branches: main
+    branches:
+      - main
 
 jobs:
-  FTP-Deploy:
-    name: FTP Deploy
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: FTP Deploy
-      uses: SamKirkland/FTP-Deploy-Action@v1.1.0
-      with:
-        ftp-server: ftp.electronicdevices.co.za
-        ftp-username: myFtpUserName
-        ftp-password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: './public_html'
-        remote-dir: '/home/electgcs/public_html/'
+    - name: Install sshpass and netcat
+      run: sudo apt-get update && sudo apt-get install -y sshpass netcat
+
+    - name: Diagnostic checks
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        echo "Checking connection to server..."
+        nc -zv $HOST $PORT
+        echo "Attempting SSH connection..."
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
+
+    - name: Deploy to server using scp
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+        TARGET: /home/electgcs/public_html/
+      run: |
+        sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:$TARGET
+
+    - name: Verify deployment
+      env:
+        HOST: ${{ secrets.FTP_SERVER }}
+        USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
+        PORT: ${{ secrets.FTP_PORT }}
+      run: |
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
