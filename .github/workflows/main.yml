@@ -3,69 +3,44 @@ on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      timeout-minutes: 5
 
-    - name: Install SSH
-      run: sudo apt-get update && sudo apt-get install openssh-client
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+      timeout-minutes: 5
 
-    - name: Add SSH key to agent
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+    - name: Debug - List files to be deployed
       run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        eval `ssh-agent -s`
-        ssh-add ~/.ssh/id_rsa
+        echo "Files to be deployed:"
+        ls -R
+      timeout-minutes: 2
 
-    - name: Test SSH connection
+    - name: Deploy using SFTP
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "echo Connection successful"
-      continue-on-error: true
-
-    - name: Deploy using scp
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        scp -o StrictHostKeyChecking=no -P $PORT -r ./* $USER@$HOST:/home/electgcs/public_html/
-      continue-on-error: true
-
-    - name: Deploy using rsync
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" ./* $USER@$HOST:/home/electgcs/public_html/
-      continue-on-error: true
-
-    - name: Deploy using SFTP (lftp)
-      env:
-        HOST: ${{ secrets.FTP_SERVER }}
-        USER: ${{ secrets.FTP_USERNAME }}
-        PORT: ${{ secrets.FTP_PORT }}
-      run: |
-        sudo apt-get install lftp
-        lftp -c "open -u $USER,$USER sftp://$HOST:$PORT; mirror -R ./ /home/electgcs/public_html/"
-      continue-on-error: true
+        echo "Starting SFTP deployment..."
+        lftp -d -e "set sftp:auto-confirm yes; set net:timeout 10; set net:max-retries 3; open sftp://$USER:$PASS@$HOST:$PORT; mirror --verbose -R ./ /home/electgcs/public_html/; quit"
+        echo "SFTP deployment completed."
+      timeout-minutes: 15
 
     - name: Verify deployment
       env:
         HOST: ${{ secrets.FTP_SERVER }}
         USER: ${{ secrets.FTP_USERNAME }}
+        PASS: ${{ secrets.FTP_PASSWORD }}
         PORT: ${{ secrets.FTP_PORT }}
       run: |
-        ssh -o StrictHostKeyChecking=no -p $PORT $USER@$HOST "ls -la /home/electgcs/public_html/"
-      continue-on-error: true
+        echo "Verifying deployment..."
+        lftp -e "set sftp:auto-confirm yes; set net:timeout 10; open sftp://$USER:$PASS@$HOST:$PORT; ls -la /home/electgcs/public_html/; quit"
+        echo "Verification completed."
+      timeout-minutes: 5
